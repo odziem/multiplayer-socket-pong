@@ -3,9 +3,6 @@ import express from 'express';
 import path from 'path';
 import logger from 'morgan';
 
-import indexRouter from './routes/index.js';
-import usersRouter from './routes/users.js';
-
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
@@ -14,17 +11,12 @@ const __dirname = dirname(__filename);
 
 const api = express();
 
-// view engine setup
-api.set('views', path.join(__dirname, 'views'));
-api.set('view engine', 'hbs');
-
 api.use(logger('dev'));
 api.use(express.json());
 api.use(express.urlencoded({ extended: false }));
 api.use(express.static(path.join(__dirname, 'public')));
 
-api.use('/', indexRouter);
-api.use('/users', usersRouter);
+api.use('/', express.static('index.html'));
 
 // catch 404 and forward to error handler
 api.use(function(req, res, next) {
