@@ -4,7 +4,8 @@
  * Module dependencies.
  */
 
-import app from './app.js';
+import api from './api.js';
+import * as sockets from './sockets.js';
 import debugModule from 'debug';
 import http from 'http';
 import socket from 'socket.io';
@@ -16,17 +17,14 @@ const debug = debugModule('pong-socket-server:server');
  */
 
 const port = normalizePort(process.env.PORT || '3000');
-app.set('port', port);
+api.set('port', port);
 
 /**
  * Create HTTP server.
  */
 
-const server = http.createServer(app);
+const server = http.createServer(api);
 const io = socket(server);
-
-let playerData = {};
-let ballDirection = 1;
 
 /**
  * Listen on provided port, on all network interfaces.
@@ -38,29 +36,7 @@ console.log(`listening on port ${port}...`);
 server.on('error', onError);
 server.on('listening', onListening);
 
-io.on('connection', (socket) => {
-  console.log('a user connected');
-  socket.on('ready', (data) => {
-    console.log('ready', data);
-    playerData[data.playerId] = {
-      xPosition: data.xPosition,
-      ballDirection,
-    };
-    ballDirection *= -1;
-    if (Object.keys(playerData).length === 2) {
-      io.emit('startGame', playerData);
-    }
-  });
-  socket.on('disconnect', () => {
-    console.log('user disconnected');
-  });
-  socket.on('positionUpdate', (data) => {
-    playerData[data.playerId] = {
-      xPosition: data.xPosition,
-    };
-    io.emit('positionUpdate', playerData);
-  });
-});
+sockets.listen(io);
 
 /**
  * Normalize a port into a number, string, or false.
