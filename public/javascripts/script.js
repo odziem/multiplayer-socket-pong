@@ -2,6 +2,8 @@
 const canvas = document.createElement('canvas');
 const context = canvas.getContext('2d');
 const socket = io();
+const playerId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+
 let width = 500;
 let height = 700;
 let screenWidth = window.screen.width;
@@ -20,9 +22,10 @@ let paddleContact = false;
 let ball_X = 250;
 let ball_Y = 350;
 let ballRadius = 5;
+let ballDirection = -1;
 
 // Speed
-let speed_Y = -2;
+let speed_Y = 2;
 let speed_X = speed_Y;
 let computerSpeed = 4;
 
@@ -37,6 +40,17 @@ function createCanvas() {
     canvas.height = height;
     document.body.appendChild(canvas);
     renderCanvas();
+}
+
+function renderIntro() {
+    // Canvas Background
+    context.fillStyle = 'black';
+    context.fillRect(0, 0, width, height);
+
+    // Intro Text
+    context.fillStyle = 'white';
+    context.font = "32px Courier New";
+    context.fillText("Waiting for opponent...", 20, (canvas.height / 2) - 30);
 }
 
 // Render Everything on Canvas
@@ -77,13 +91,13 @@ function renderCanvas() {
 function ballReset() {
     ball_X = width / 2;
     ball_Y = height / 2;
-    speed_Y = -3;
+    speed_Y = 3;
     paddleContact = false;
 }
 
 function ballMove() {
     // Vertical Speed
-    ball_Y += -speed_Y;
+    ball_Y += speed_Y * ballDirection;
     // Horizontal Speed
     if (playerMoved && paddleContact) {
         ball_X += speed_X;
@@ -93,11 +107,11 @@ function ballMove() {
 function ballBoundaries() {
     // Bounce off Left Wall
     if (ball_X < 0 && speed_X < 0) {
-        speed_X =- speed_X;
+        speed_X = -speed_X;
     }
     // Bounce off Right Wall
     if (ball_X > width && speed_X > 0) {
-        speed_X =- speed_X;
+        speed_X = -speed_X;
     }
     // Bounce off player paddle (bottom)
     if (ball_Y > height - paddleDiff) {
@@ -105,14 +119,14 @@ function ballBoundaries() {
             paddleContact = true;
             // Add Speed on Hit
             if (playerMoved) {
-                speed_Y = speed_Y - 1;
+                speed_Y = speed_Y + 1;
                 // Max Speed
-                if (speed_Y < -5) {
-                    speed_Y = -5;
+                if (speed_Y > 5) {
+                    speed_Y = 5;
                     computerSpeed = 6;
                 }
             }
-            speed_Y = -speed_Y;
+            ballDirection = -ballDirection;
             trajectory_X = ball_X - (paddle1_X + paddleDiff);
             speed_X = trajectory_X * 0.3;
             // console.log('player speed',speed_Y);
@@ -134,7 +148,7 @@ function ballBoundaries() {
                     speed_Y = 5;
                 }
             }
-            speed_Y = -speed_Y;
+            ballDirection = -ballDirection;
             // console.log('computer speed',speed_Y);
         } else if (ball_Y < 0) {
             // Reset Ball, add to Player Score
@@ -159,24 +173,43 @@ function animate() {
     renderCanvas();
     ballMove();
     ballBoundaries();
-    computerAI();
+    // computerAI();
     window.requestAnimationFrame(animate);
 }
 
 window.onload = () => {
     createCanvas();
-    window.requestAnimationFrame(animate);
-    canvas.addEventListener('mousemove', (e) => {
-        // console.log(e.clientX);
-        playerMoved = true;
-        paddle1_X = (e.clientX - canvasPosition) - paddleDiff;
-        if (paddle1_X < paddleDiff) {
-            paddle1_X = 0;
-        } 
-        if (paddle1_X > (width - paddleWidth)) {
-            paddle1_X = width - paddleWidth;
-        }
-        canvas.style.cursor = 'none';
+    renderIntro();
+    socket.emit('ready', {
+        playerId,
+        xPosition: paddle1_X,
+    });
+    socket.on('startGame', (playerData) => {
+        console.log('start game received', playerData);
+        window.requestAnimationFrame(animate);
+        canvas.addEventListener('mousemove', (e) => {
+            // console.log(e.clientX);
+            playerMoved = true;
+            paddle1_X = (e.clientX - canvasPosition) - paddleDiff;
+            if (paddle1_X < paddleDiff) {
+                paddle1_X = 0;
+            } 
+            if (paddle1_X > (width - paddleWidth)) {
+                paddle1_X = width - paddleWidth;
+            }
+            socket.emit('positionUpdate', {
+                playerId: playerId,
+                xPosition: paddle1_X,
+            });
+            canvas.style.cursor = 'none';
+        });
+        socket.on('positionUpdate', (data) => {
+            Object.keys(data).forEach(remotePlayerId => {
+                if (remotePlayerId !== playerId) {
+                    paddle2_X = data[remotePlayerId].xPosition;
+                }
+            })
+        });
     });
 }
 

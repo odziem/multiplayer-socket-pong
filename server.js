@@ -4,10 +4,12 @@
  * Module dependencies.
  */
 
-const app = require('./app');
-const debug = require('debug')('pong-socket-server:server');
-const http = require('http');
-const socket = require('socket.io');
+import app from './app.js';
+import debugModule from 'debug';
+import http from 'http';
+import socket from 'socket.io';
+
+const debug = debugModule('pong-socket-server:server');
 
 /**
  * Get port from environment and store in Express.
@@ -23,6 +25,9 @@ app.set('port', port);
 const server = http.createServer(app);
 const io = socket(server);
 
+let playerData = {};
+let ballDirection = 1;
+
 /**
  * Listen on provided port, on all network interfaces.
  */
@@ -35,8 +40,25 @@ server.on('listening', onListening);
 
 io.on('connection', (socket) => {
   console.log('a user connected');
+  socket.on('ready', (data) => {
+    console.log('ready', data);
+    playerData[data.playerId] = {
+      xPosition: data.xPosition,
+      ballDirection,
+    };
+    ballDirection *= -1;
+    if (Object.keys(playerData).length === 2) {
+      io.emit('startGame', playerData);
+    }
+  });
   socket.on('disconnect', () => {
     console.log('user disconnected');
+  });
+  socket.on('positionUpdate', (data) => {
+    playerData[data.playerId] = {
+      xPosition: data.xPosition,
+    };
+    io.emit('positionUpdate', playerData);
   });
 });
 

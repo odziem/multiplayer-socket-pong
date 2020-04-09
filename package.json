@@ -1,12 +1,12 @@
 {
   "name": "pong-socket-server",
-  "version": "0.0.0",
+  "version": "0.0.1",
+  "type": "module",
   "private": true,
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "cookie-parser": "~1.4.4",
     "debug": "~2.6.9",
     "express": "~4.17.1",
     "hbs": "^4.1.0",
